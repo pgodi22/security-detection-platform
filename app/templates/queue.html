@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Queue — Detection Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Open Detection Queue</h1>
+</div>
+
+<div class="table-card">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Customer</th>
+        <th>Signature</th>
+        <th>Priority</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for detection in detections %}
+      <tr>
+        <td>{{ detection.id }}</td>
+        <td>{{ detection.customer.name }}</td>
+        <td>{{ detection.signature.name }}</td>
+        <td>{{ detection.priority }}</td>
+        <td><span class="status-badge status-{{ detection.status.value }}">{{ detection.status.value }}</span></td>
+        <td>
+          {% if can_claim %}
+          <button class="btn btn-sm" onclick="claimDetection({{ detection.id }})">Claim</button>
+          {% else %}
+          <span class="muted">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" class="empty-row">No open detections. Queue is clear.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}All Detections — Detection Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>All Detections</h1>
+</div>
+
+<form class="filter-bar" method="get" action="/detections">
+  <input
+    type="text"
+    name="search"
+    placeholder="Search by customer or signature…"
+    value="{{ search }}"
+  >
+  <select name="status">
+    <option value="" {% if not status_filter %}selected{% endif %}>All statuses</option>
+    <option value="open" {% if status_filter == 'open' %}selected{% endif %}>Open</option>
+    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+    <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>Closed</option>
+  </select>
+  <button type="submit" class="btn">Filter</button>
+</form>
+
+<div class="table-card">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Customer</th>
+        <th>Signature</th>
+        <th>Priority</th>
+        <th>Status</th>
+        <th>Resolution</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for detection in detections %}
+      <tr>
+        <td>{{ detection.id }}</td>
+        <td>{{ detection.customer.name }}</td>
+        <td>{{ detection.signature.name }}</td>
+        <td>{{ detection.priority }}</td>
+        <td><span class="status-badge status-{{ detection.status.value }}">{{ detection.status.value }}</span></td>
+        <td>{{ detection.resolution or '—' }}</td>
+        <td>
+          {% if detection.status.value == 'active' and current_user.id == detection.assigned_to %}
+          <button class="btn btn-sm btn-danger" onclick="closeDetection({{ detection.id }})">Close</button>
+          {% else %}
+          <span class="muted">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" class="empty-row">No detections found.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

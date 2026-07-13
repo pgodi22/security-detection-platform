@@ -1,0 +1,19 @@
+# Environment
+.env
+venv/
+
+# Claude Code
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Test artifacts
+test_ingest.py
+
+# OS
+.DS_Store

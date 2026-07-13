@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Customers — Detection Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Customers</h1>
+</div>
+
+{% if current_user.role.value == 'admin' %}
+<div class="form-card">
+  <h2>Add Customer</h2>
+  <form class="form-row" onsubmit="return submitCreateCustomer(event)">
+    <input type="text" name="name" placeholder="Customer name" required>
+    <input type="number" name="importance_level" placeholder="Importance (1-10)" min="1" max="10" required>
+    <button type="submit" class="btn">Add</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="table-card">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Importance</th>
+        <th>Created</th>
+        {% if current_user.role.value == 'admin' %}<th>Actions</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for customer in customers %}
+      <tr id="customer-row-{{ customer.id }}">
+        <td>{{ customer.id }}</td>
+        <td class="cell-name">{{ customer.name }}</td>
+        <td class="cell-importance">{{ customer.importance_level }}</td>
+        <td>{{ customer.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        {% if current_user.role.value == 'admin' %}
+        <td>
+          <button class="btn btn-sm btn-ghost" onclick="editCustomer({{ customer.id }})">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteCustomer({{ customer.id }})">Delete</button>
+        </td>
+        {% endif %}
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="{{ 5 if current_user.role.value == 'admin' else 4 }}" class="empty-row">No customers yet.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+  async function submitCreateCustomer(evt) {
+    evt.preventDefault();
+    const form = evt.target;
+    const name = form.name.value.trim();
+    const importance_level = parseInt(form.importance_level.value, 10);
+
+    const resp = await fetch('/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, importance_level }),
+    });
+
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      alert(typeof data.detail === 'string' ? data.detail : 'Failed to create customer.');
+      return false;
+    }
+    window.location.href = '/customers';
+    return false;
+  }
+
+  async function editCustomer(id) {
+    const row = document.getElementById(`customer-row-${id}`);
+    const currentName = row.querySelector('.cell-name').textContent.trim();
+    const currentImportance = row.querySelector('.cell-importance').textContent.trim();
+
+    const name = prompt('Customer name:', currentName);
+    if (name === null) return;
+    const importanceStr = prompt('Importance level (1-10):', currentImportance);
+    if (importanceStr === null) return;
+
+    const payload = {};
+    if (name.trim() !== '') payload.name = name.trim();
+    const importance_level = parseInt(importanceStr, 10);
+    if (!isNaN(importance_level)) payload.importance_level = importance_level;
+
+    const resp = await fetch(`/customers/${id}/update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      alert(typeof data.detail === 'string' ? data.detail : 'Failed to update customer.');
+      return;
+    }
+    window.location.href = '/customers';
+  }
+
+  async function deleteCustomer(id) {
+    if (!confirm('Delete this customer? This cannot be undone.')) return;
+
+    const resp = await fetch(`/customers/${id}/delete`, { method: 'POST' });
+
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      alert(typeof data.detail === 'string' ? data.detail : 'Failed to delete customer.');
+      return;
+    }
+    window.location.href = '/customers';
+  }
+</script>
+{% endblock %}

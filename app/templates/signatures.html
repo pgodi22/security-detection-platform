@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Signatures — Detection Platform{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Signatures</h1>
+</div>
+
+{% if current_user.role.value == 'admin' %}
+<div class="form-card">
+  <h2>Add Signature</h2>
+  <form class="form-row" onsubmit="return submitCreateSignature(event)">
+    <input type="text" name="name" placeholder="Signature name" required>
+    <input type="number" name="priority" placeholder="Priority" required>
+    <textarea name="fields" rows="2" placeholder='{"event_type": "auth_failure", "protocol": "ssh"}' required></textarea>
+    <button type="submit" class="btn">Add</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="table-card">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Priority</th>
+        <th>Fields</th>
+        <th>Created</th>
+        {% if current_user.role.value == 'admin' %}<th>Actions</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for signature in signatures %}
+      <tr id="signature-row-{{ signature.id }}">
+        <td>{{ signature.id }}</td>
+        <td class="cell-name">{{ signature.name }}</td>
+        <td class="cell-priority">{{ signature.priority }}</td>
+        <td class="cell-fields"><code>{{ signature.fields | tojson }}</code></td>
+        <td>{{ signature.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        {% if current_user.role.value == 'admin' %}
+        <td>
+          <button class="btn btn-sm btn-ghost" onclick="editSignature({{ signature.id }})">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteSignature({{ signature.id }})">Delete</button>
+        </td>
+        {% endif %}
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="{{ 6 if current_user.role.value == 'admin' else 5 }}" class="empty-row">No signatures yet.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+  async function submitCreateSignature(evt) {
+    evt.preventDefault();
+    const form = evt.target;
+    const name = form.name.value.trim();
+    const priority = parseInt(form.priority.value, 10);
+
+    let fields;
+    try {
+      fields = JSON.parse(form.fields.value);
+    } catch (e) {
+      alert('Fields must be valid JSON, e.g. {"event_type": "auth_failure"}');
+      return false;
+    }
+
+    const resp = await fetch('/signatures', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, priority, fields }),
+    });
+
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      alert(typeof data.detail === 'string' ? data.detail : 'Failed to create signature.');
+      return false;
+    }
+    window.location.href = '/signatures';
+    return false;
+  }
+
+  async function editSignature(id) {
+    const row = document.getElementById(`signature-row-${id}`);
+    const currentName = row.querySelector('.cell-name').textContent.trim();
+    const currentPriority = row.querySelector('.cell-priority').textContent.trim();
+    const currentFields = row.querySelector('.cell-fields').textContent.trim();
+
+    const name = prompt('Signature name:', currentName);
+    if (name === null) return;
+    const priorityStr = prompt('Priority:', currentPriority);
+    if (priorityStr === null) return;
+    const fieldsStr = prompt('Fields (JSON):', currentFields);
+    if (fieldsStr === null) return;
+
+    const payload = {};
+    if (name.trim() !== '') payload.name = name.trim();
+    const priority = parseInt(priorityStr, 10);
+    if (!isNaN(priority)) payload.priority = priority;
+    if (fieldsStr.trim() !== '') {
+      try {
+        payload.fields = JSON.parse(fieldsStr);
+      } catch (e) {
+        alert('Fields must be valid JSON.');
+        return;
+      }
+    }
+
+    const resp = await fetch(`/signatures/${id}/update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      alert(typeof data.detail === 'string' ? data.detail : 'Failed to update signature.');
+      return;
+    }
+    window.location.href = '/signatures';
+  }
+
+  async function deleteSignature(id) {
+    if (!confirm('Delete this signature? This cannot be undone.')) return;
+
+    const resp = await fetch(`/signatures/${id}/delete`, { method: 'POST' });
+
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      alert(typeof data.detail === 'string' ? data.detail : 'Failed to delete signature.');
+      return;
+    }
+    window.location.href = '/signatures';
+  }
+</script>
+{% endblock %}

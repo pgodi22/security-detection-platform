@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Detection Platform{% endblock %}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ---- Nav ---- */
+    .topnav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      padding: 0.9rem 1.5rem;
+      background: #1a1d27;
+      border-bottom: 1px solid #2d3148;
+    }
+
+    .topnav .brand {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #f8fafc;
+      margin-right: 1rem;
+    }
+
+    .topnav .nav-links {
+      display: flex;
+      gap: 1.25rem;
+      flex: 1;
+    }
+
+    .topnav .nav-links a {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #94a3b8;
+      padding: 0.35rem 0;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .topnav .nav-links a:hover { color: #e2e8f0; }
+
+    .topnav .nav-links a.active {
+      color: #4f6ef7;
+      border-bottom-color: #4f6ef7;
+    }
+
+    .topnav .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .topnav .username {
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+
+    .topnav .username strong {
+      color: #cbd5e1;
+      font-weight: 500;
+    }
+
+    /* ---- Buttons ---- */
+    .btn {
+      display: inline-block;
+      padding: 0.45rem 0.9rem;
+      background: #4f6ef7;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn:hover { background: #3d5ce0; }
+    .btn:active { background: #3251cc; }
+
+    .btn-sm { padding: 0.3rem 0.65rem; font-size: 0.78rem; }
+
+    .btn-danger { background: #7f1d1d; }
+    .btn-danger:hover { background: #991b1b; }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid #2d3148;
+      color: #94a3b8;
+    }
+
+    .btn-ghost:hover { background: #20232f; color: #e2e8f0; }
+
+    /* ---- Active detection overlay ---- */
+    .active-overlay {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.65rem 1.5rem;
+      background: #2d2410;
+      border-bottom: 1px solid #7c5e10;
+      color: #fbbf24;
+      font-size: 0.85rem;
+    }
+
+    .active-overlay .active-overlay-label {
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.05em;
+      margin-right: 0.5rem;
+      color: #fcd34d;
+    }
+
+    /* ---- Page ---- */
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+
+    .page-header h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #f8fafc;
+    }
+
+    /* ---- Filter bar ---- */
+    .filter-bar {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .filter-bar input[type="text"],
+    .filter-bar select,
+    .form-row input[type="text"],
+    .form-row input[type="number"],
+    .form-row select,
+    .form-row textarea {
+      background: #1a1d27;
+      border: 1px solid #2d3148;
+      border-radius: 4px;
+      color: #e2e8f0;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .filter-bar input[type="text"] {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .filter-bar input[type="text"]:focus,
+    .filter-bar select:focus,
+    .form-row input:focus,
+    .form-row select:focus,
+    .form-row textarea:focus {
+      border-color: #4f6ef7;
+    }
+
+    /* ---- Form card (add/edit forms) ---- */
+    .form-card {
+      background: #1a1d27;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .form-card h2 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .form-row textarea {
+      flex: 1;
+      min-width: 240px;
+      resize: vertical;
+    }
+
+    /* ---- Table ---- */
+    .table-card {
+      background: #1a1d27;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    thead th {
+      text-align: left;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #2d3148;
+    }
+
+    tbody td {
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      border-bottom: 1px solid #20232f;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #20232f; }
+
+    .empty-row {
+      text-align: center;
+      color: #64748b;
+      padding: 2rem 1rem;
+    }
+
+    .muted { color: #64748b; }
+
+    /* ---- Status badges ---- */
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .status-open { background: #1e293b; color: #93c5fd; }
+    .status-active { background: #422006; color: #fbbf24; }
+    .status-closed { background: #052e16; color: #4ade80; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <nav class="topnav">
+    <span class="brand">Detection Platform</span>
+    <div class="nav-links">
+      <a href="/detections/queue" class="{{ 'active' if request.url.path == '/detections/queue' else '' }}">Queue</a>
+      <a href="/detections" class="{{ 'active' if request.url.path == '/detections' else '' }}">Detections</a>
+      <a href="/customers" class="{{ 'active' if request.url.path == '/customers' else '' }}">Customers</a>
+      <a href="/signatures" class="{{ 'active' if request.url.path == '/signatures' else '' }}">Signatures</a>
+    </div>
+    <div class="nav-right">
+      {% if current_user %}
+      <span class="username">Signed in as <strong>{{ current_user.username }}</strong> ({{ current_user.role.value }})</span>
+      {% endif %}
+      <form method="post" action="/auth/logout">
+        <button type="submit" class="btn btn-ghost btn-sm">Logout</button>
+      </form>
+    </div>
+  </nav>
+
+  <div id="active-overlay" class="active-overlay">
+    <span><span class="active-overlay-label">Active detection</span><span id="active-overlay-text"></span></span>
+    <button class="btn btn-sm btn-danger" onclick="closeDetection(activeOverlayDetectionId)">Close</button>
+  </div>
+
+  <main class="page">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    let activeOverlayDetectionId = null;
+
+    async function refreshActiveDetection() {
+      try {
+        const resp = await fetch('/detections/active');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const overlay = document.getElementById('active-overlay');
+        if (!data) {
+          overlay.style.display = 'none';
+          activeOverlayDetectionId = null;
+          return;
+        }
+        activeOverlayDetectionId = data.id;
+        document.getElementById('active-overlay-text').textContent =
+          `#${data.id} — ${data.customer_name} / ${data.signature_name} (priority ${data.priority})`;
+        overlay.style.display = 'flex';
+      } catch (err) {
+        console.error('Failed to refresh active detection', err);
+      }
+    }
+
+    async function claimDetection(id) {
+      const resp = await fetch(`/detections/queue/claim/${id}`, { method: 'POST' });
+      if (resp.status === 409) {
+        const data = await resp.json().catch(() => ({}));
+        alert(data.detail || 'Detection already claimed by another analyst');
+        window.location.reload();
+        return;
+      }
+      if (!resp.ok) {
+        alert('Failed to claim detection.');
+        return;
+      }
+      window.location.href = '/detections/queue';
+    }
+
+    async function closeDetection(id) {
+      if (!id) return;
+      const resolution = prompt('Resolution notes:');
+      if (resolution === null || resolution.trim() === '') return;
+
+      const resp = await fetch(`/detections/close/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resolution }),
+      });
+
+      if (resp.status === 403) {
+        alert('You do not own this detection.');
+        return;
+      }
+      if (!resp.ok) {
+        alert('Failed to close detection.');
+        return;
+      }
+      window.location.href = '/detections/queue';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      refreshActiveDetection();
+      setInterval(refreshActiveDetection, 15000);
+    });
+  </script>
+  {% block extra_script %}{% endblock %}
+</body>
+</html>

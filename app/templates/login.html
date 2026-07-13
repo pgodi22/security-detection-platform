@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in — Detection Platform</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card {
+      background: #1a1d27;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 380px;
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #f8fafc;
+      margin-bottom: 0.25rem;
+    }
+
+    .subtitle {
+      font-size: 0.83rem;
+      color: #64748b;
+      margin-bottom: 2rem;
+    }
+
+    .error {
+      background: #3b1219;
+      border: 1px solid #7f1d1d;
+      color: #fca5a5;
+      border-radius: 4px;
+      padding: 0.6rem 0.8rem;
+      font-size: 0.875rem;
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.4rem;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      display: block;
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      background: #0f1117;
+      border: 1px solid #2d3148;
+      border-radius: 4px;
+      color: #e2e8f0;
+      font-size: 0.95rem;
+      margin-bottom: 1.25rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      border-color: #4f6ef7;
+    }
+
+    button {
+      width: 100%;
+      padding: 0.65rem;
+      background: #4f6ef7;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button:hover { background: #3d5ce0; }
+    button:active { background: #3251cc; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Detection Platform</h1>
+    <p class="subtitle">Sign in to your account</p>
+
+    {% if request.query_params.get('error') %}
+    <div class="error">{{ request.query_params.get('error') }}</div>
+    {% endif %}
+
+    <form method="post" action="/auth/login">
+      <label for="username">Username</label>
+      <input
+        type="text"
+        id="username"
+        name="username"
+        autocomplete="username"
+        required
+        autofocus
+      >
+
+      <label for="password">Password</label>
+      <input
+        type="password"
+        id="password"
+        name="password"
+        autocomplete="current-password"
+        required
+      >
+
+      <button type="submit">Sign in</button>
+    </form>
+  </div>
+</body>
+</html>
