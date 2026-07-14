@@ -53,7 +53,36 @@ App runs at `http://127.0.0.1:8000`; `/` redirects to `/login`.
 | `analyst` | `analyst123` | analyst | Claim/close detections |
 | `readonly` | `readonly123` | readonly | View-only |
 
-## 4. Tech Stack
+## 4. Demo Data
+
+`seed.py` also creates customers, signatures, and a couple of open
+detections so the queue isn't empty on first login. Each step is skipped if
+that data already exists.
+
+**Customers**
+
+| Name | Importance |
+|---|---|
+| Acme Corp | 10 |
+| GlobalBank | 8 |
+| TechStartup | 4 |
+
+**Signatures**
+
+| Name | Priority | Fields |
+|---|---|---|
+| SSH Brute Force | 8 | `event_type=auth_failure`, `protocol=ssh` |
+| Malware Detected | 10 | `event_type=malware`, `severity=high` |
+| Port Scan | 5 | `event_type=recon`, `protocol=tcp` |
+
+**Open Detections** (priority = customer importance × signature priority)
+
+| Customer | Signature | Priority |
+|---|---|---|
+| GlobalBank | SSH Brute Force | 64 |
+| Acme Corp | Malware Detected | 100 |
+
+## 5. Tech Stack
 
 | Choice | Why |
 |---|---|
@@ -68,7 +97,7 @@ App runs at `http://127.0.0.1:8000`; `/` redirects to `/login`.
 | **python-dotenv** | Loads `.env` config locally. |
 | **python-multipart** | Parses the login form. |
 
-## 5. Architecture Decisions
+## 6. Architecture Decisions
 
 **FastAPI over Flask/Django.** Endpoints are small and independently
 role-gated. `Depends` composes auth checks (`require_admin`,
@@ -120,7 +149,7 @@ current tab already triggered (claim/close refresh immediately
 client-side). A push channel would add connection lifecycle and reconnect
 complexity for a case that tolerates a few seconds of staleness.
 
-## 6. AI Usage
+## 7. AI Usage
 
 This project was built with Claude Code, used interactively throughout
 development to implement route handlers, database logic, and templates
@@ -129,7 +158,7 @@ strategy, priority formula, matching logic, UI behavior — was directed by
 a human, with each change manually verified against a running server
 before being accepted.
 
-## 7. Known Limitations & Future Improvements
+## 8. Known Limitations & Future Improvements
 
 - **`importance_level` is validated only at the API layer** (Pydantic
   `ge=1, le=10`) — no DB `CHECK` constraint, so a direct write could store
@@ -141,14 +170,17 @@ before being accepted.
   before deploying behind HTTPS.
 - **No pagination** on `/detections/queue` or `/detections` — both load
   the full result set.
-- **No automated test suite** — `test_ingest.py` is a manual smoke script,
-  not `pytest` coverage for auth, role enforcement, signature matching, or
-  the claim race. Biggest gap before this is production-ready.
+- **Test suite covers the core paths, not everything** — `tests/` (pytest)
+  covers signature matching, priority calculation, role enforcement, and
+  the claim conflict, and runs in CI on every push/PR to `main`.
+  `test_ingest.py` is still a separate manual smoke script, and there's no
+  coverage yet for customer/signature CRUD or the detections search/filter
+  view.
 - **`requirements.txt` has unused packages** (`alembic`, `passlib`) from
   initial scaffolding — schema uses `create_all`, hashing uses `bcrypt`
   directly.
 
-## 8. Feature Checklist
+## 9. Feature Checklist
 
 **Auth & Access Control**
 - [x] Login/logout, JWT in HTTP-only `SameSite=Lax` cookie — `auth_routes.py`
