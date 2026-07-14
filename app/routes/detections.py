@@ -15,6 +15,7 @@ router = APIRouter(prefix="/detections", tags=["detections"])
 templates = Jinja2Templates(directory="app/templates")
 
 
+# the main work queue analysts see when they log in — open detections, most urgent first
 @router.get("/queue", response_class=HTMLResponse)
 def detection_queue(
     request: Request,
@@ -27,6 +28,7 @@ def detection_queue(
         .order_by(Detection.priority.desc())
         .all()
     )
+    # only analysts and admins get to see the claim button
     can_claim = current_user.role in (UserRole.analyst, UserRole.admin)
     return templates.TemplateResponse(
         request,
@@ -39,12 +41,14 @@ def detection_queue(
     )
 
 
+# lets an analyst grab an open detection to work on
 @router.post("/queue/claim/{detection_id}")
 def claim_detection(
     detection_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_analyst),
 ):
+    # locks the row so two analysts can't claim the same detection at the same moment
     detection = (
         db.query(Detection)
         .filter(Detection.id == detection_id)
@@ -57,8 +61,9 @@ def claim_detection(
         )
 
     if detection.status != DetectionStatus.open:
-        db.rollback()
+        db.rollback()  # let go of the lock right away since we're not changing anything
         raise HTTPException(
+            # tells the analyst someone beat them to it, not that their request was invalid
             status_code=status.HTTP_409_CONFLICT,
             detail="Detection already claimed by another analyst",
         )
@@ -68,18 +73,23 @@ def claim_detection(
     db.commit()
 
     return RedirectResponse(
+        # reloads the queue page with a fresh GET instead of resubmitting the claim on refresh
         url="/detections/queue", status_code=status.HTTP_303_SEE_OTHER
     )
 
 
+# full searchable list of detections, open and closed alike
+# note: the empty path (not "/") keeps GET /detections from redirecting
 @router.get("", response_class=HTMLResponse)
 def detections_page(
     request: Request,
     search: Optional[str] = None,
+    # shows up as "status" in the URL, renamed here so it doesn't clash with the status module used elsewhere in this file
     status_filter: Optional[str] = Query(default=None, alias="status"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_readonly),
 ):
+    # every detection always has a customer and a signature, so it's safe to require both here
     query = db.query(Detection).join(Customer).join(Signature)
 
     if search:
@@ -92,7 +102,7 @@ def detections_page(
         try:
             query = query.filter(Detection.status == DetectionStatus(status_filter))
         except ValueError:
-            pass
+            pass  # an unrecognized filter value just shows everything instead of erroring out
 
     detections = query.order_by(Detection.created_at.desc()).all()
 
@@ -108,6 +118,7 @@ def detections_page(
     )
 
 
+# tells the frontend whether this analyst already has a detection in progress, so it can restore that view on page load
 @router.get("/active", response_model=Optional[DetectionResponse])
 def active_detection(
     db: Session = Depends(get_db),
@@ -122,10 +133,12 @@ def active_detection(
         .first()
     )
     if not detection:
+        # no active detection is normal here, not an error — this endpoint gets polled constantly
         return None
     return DetectionResponse.model_validate(detection)
 
 
+# marks a detection resolved and records how it was closed out
 @router.post("/close/{detection_id}")
 def close_detection(
     detection_id: int,
@@ -139,6 +152,7 @@ def close_detection(
             status_code=status.HTTP_404_NOT_FOUND, detail="Detection not found"
         )
 
+    # also blocks closing a detection nobody's claimed yet
     if detection.assigned_to != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

@@ -25,12 +25,13 @@ from sqlalchemy.orm import (
     sessionmaker,
 )
 
-# reads .env file, connects to PostgresSQL, creates a session factory
+# sets up the database connection every route in the app will use
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(DATABASE_URL)
+# turned off so it doesn't interfere with the row-locking used when an analyst claims a detection
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -38,18 +39,21 @@ class Base(DeclarativeBase):
     pass
 
 
+# the roles that control what a user can see and do in the app
 class UserRole(str, enum.Enum):
     admin = "admin"
     analyst = "analyst"
     readonly = "readonly"
 
 
+# where a detection is in its lifecycle: open, claimed (active), or closed
 class DetectionStatus(str, enum.Enum):
     open = "open"
     active = "active"
     closed = "closed"
 
 
+# a person who can log into the platform and work detections
 class User(Base):
     __tablename__ = "users"
 
@@ -68,12 +72,14 @@ class User(Base):
     )
 
 
+# an organization we're monitoring for security incidents
 class Customer(Base):
     __tablename__ = "customers"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    importance_level: Mapped[int] = mapped_column(Integer, nullable=False)  # 1–10
+    # how much this customer matters, from 1 (low) to 10 (critical) — feeds into priority scoring
+    importance_level: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -86,12 +92,14 @@ class Customer(Base):
     )
 
 
+# a rule that matches incoming incident data and turns it into a detection
 class Signature(Base):
     __tablename__ = "signatures"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     priority: Mapped[int] = mapped_column(Integer, nullable=False)
+    # whatever match criteria this signature needs — flexible so we don't have to change the database every time a new one comes along
     fields: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -102,6 +110,7 @@ class Signature(Base):
     )
 
 
+# a security incident that matched a signature and is being tracked through to resolution
 class Detection(Base):
     __tablename__ = "detections"
 
@@ -112,10 +121,12 @@ class Detection(Base):
     customer_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("customers.id"), nullable=False
     )
+    # locked in when the detection is created, so later changes to customer importance or signature severity don't reshuffle old detections
     priority: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[DetectionStatus] = mapped_column(
         Enum(DetectionStatus), nullable=False, default=DetectionStatus.open
     )
+    # empty until an analyst claims the detection
     assigned_to: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
@@ -133,12 +144,14 @@ class Detection(Base):
         "User", back_populates="assigned_detections", foreign_keys=[assigned_to]
     )
 
+    # speeds up the two things the queue screen does constantly: filtering by status and sorting by priority
     __table_args__ = (
         Index("ix_detections_status", "status"),
         Index("ix_detections_priority", "priority"),
     )
 
 
+# hands each request its own database session and always closes it afterward, even if the request fails
 def get_db():
     db: Session = SessionLocal()
     try:

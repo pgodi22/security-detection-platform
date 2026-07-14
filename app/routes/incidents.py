@@ -8,25 +8,22 @@ from app.schemas import DetectionResponse, IncidentIngestion
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 
 
+# figures out which signature this incident matches, picking the most specific one when there's a tie
 def _find_best_signature(
     signatures: list[Signature], incoming: dict[str, str]
 ) -> Signature | None:
-    """Return the highest-priority signature whose fields are a subset of incoming,
-    or None if no signature matches.
-
-    'Highest priority' means the largest priority integer value. When two
-    signatures tie on priority, the one with the most specific match (most
-    fields) wins; remaining ties are broken by lowest id for determinism.
-    """
     matches = [
         sig for sig in signatures
+        # skip signatures with no criteria set — otherwise they'd match every single incident
         if sig.fields and sig.fields.items() <= incoming.items()
     ]
     if not matches:
         return None
+    # if it's still a tie, go with whichever signature was created first
     return max(matches, key=lambda s: (s.priority, len(s.fields), -s.id))
 
 
+# the endpoint external systems call to report a raw incident and (maybe) turn it into a detection
 @router.post("/ingest", response_model=DetectionResponse)
 def ingest_incident(payload: IncidentIngestion, db: Session = Depends(get_db)):
     customer = db.get(Customer, payload.customer_id)
@@ -39,12 +36,9 @@ def ingest_incident(payload: IncidentIngestion, db: Session = Depends(get_db)):
     signatures = db.query(Signature).all()
     matched = _find_best_signature(signatures, payload.fields)
 
-    # No signature matched: return a 200 with a clear message rather than
-    # raising an error. The external source should not be penalised for
-    # sending data that has no matching rule yet. A future unmatched_incidents
-    # table or dead-letter queue can slot in here without changing the
-    # external contract.
+    # there's no rule for this yet, so we accept the incident instead of rejecting it
     if matched is None:
+        # no detection was created, so we send back a plain response instead of the usual one
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={
@@ -58,6 +52,7 @@ def ingest_incident(payload: IncidentIngestion, db: Session = Depends(get_db)):
             },
         )
 
+    # multiplies importance and severity together, so a big customer with a small issue can still outrank a small customer with a big one (see the priority formula under Architecture Decisions in README.md)
     priority = customer.importance_level * matched.priority
 
     detection = Detection(
@@ -71,8 +66,7 @@ def ingest_incident(payload: IncidentIngestion, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(detection)
 
-    # Eager-load relationships so DetectionResponse can read .customer.name
-    # and .signature.name without a second round-trip.
+    # loads the customer and signature names now, before the database connection closes
     _ = detection.customer
     _ = detection.signature
 
