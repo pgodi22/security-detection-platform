@@ -24,9 +24,14 @@ python3.12 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# Database
-psql postgres -c "CREATE USER sdp_user WITH PASSWORD 'sdp_password';"
-psql postgres -c "CREATE DATABASE sdp_db OWNER sdp_user;"
+# Install PostgreSQL (Ubuntu/Debian)
+sudo apt install postgresql postgresql-contrib -y
+sudo service postgresql start
+
+# Create database and user
+sudo -u postgres psql -c "CREATE USER sdp_user WITH PASSWORD 'sdp_password';"
+sudo -u postgres psql -c "CREATE DATABASE sdp_db OWNER sdp_user;"
+sudo -u postgres psql -c "GRANT ALL ON SCHEMA public TO sdp_user;"
 
 # Config
 cat > .env <<'EOF'
