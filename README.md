@@ -12,7 +12,10 @@ and role-based access control.
 
 ## 2. Running Locally
 
-**Prerequisites:** Python 3.12, PostgreSQL.
+**Prerequisites:**
+
+- Python 3.12
+- PostgreSQL 14+ (Ubuntu: `sudo apt install postgresql postgresql-contrib -y`)
 
 ```bash
 # Clone and enter the repo
@@ -24,8 +27,7 @@ python3.12 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# Install PostgreSQL (Ubuntu/Debian)
-sudo apt install postgresql postgresql-contrib -y
+# Start PostgreSQL
 sudo service postgresql start
 
 # Create database and user
