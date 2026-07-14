@@ -28,7 +28,9 @@ from sqlalchemy.orm import (
 # sets up the database connection every route in the app will use
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+# falls back to a local SQLite file so the app (and CI) can still start
+# without a real Postgres URL configured
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
 
 engine = create_engine(DATABASE_URL)
 # turned off so it doesn't interfere with the row-locking used when an analyst claims a detection
