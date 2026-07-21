@@ -33,14 +33,6 @@
           {% else %}
           <span class="muted">—</span>
           {% endif %}
-          {# control panel: only analysts get this, and it stays hidden until they claim the detection #}
-          {% if is_analyst %}
-          <div class="control-panel" id="control-panel-{{ detection.id }}" style="display: none; gap: 0.4rem; margin-top: 0.4rem;">
-            <button class="btn btn-sm btn-ghost" onclick="triggerAction('Isolate Endpoint', {{ detection.id }})">Isolate Endpoint</button>
-            <button class="btn btn-sm btn-ghost" onclick="triggerAction('Reset Password', {{ detection.id }})">Reset Password</button>
-            <button class="btn btn-sm btn-ghost" onclick="triggerAction('Block IP', {{ detection.id }})">Block IP</button>
-          </div>
-          {% endif %}
         </td>
       </tr>
       {% else %}
@@ -51,24 +43,91 @@
     </tbody>
   </table>
 </div>
+
+{# control panel: only analysts get this. it's one shared pop-up (not per-row) that
+   opens on top of the page when a detection is claimed, and remembers which
+   detection it's currently open for via data-detection-id #}
+{% if is_analyst %}
+<div class="modal-overlay" id="control-panel-modal">
+  <div class="modal-box">
+    <h2>Control Panel — Detection #<span id="control-panel-detection-id"></span></h2>
+    <div class="modal-actions">
+      <button class="btn btn-sm btn-ghost" onclick="triggerAction('Isolate Endpoint')">Isolate Endpoint</button>
+      <button class="btn btn-sm btn-ghost" onclick="triggerAction('Reset Password')">Reset Password</button>
+      <button class="btn btn-sm btn-ghost" onclick="triggerAction('Block IP')">Block IP</button>
+    </div>
+    <button class="btn btn-sm btn-ghost" onclick="closeControlPanel()">Close</button>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* full-screen dimmed backdrop that centers the control panel pop-up */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .modal-box {
+    background: #1a1d27;
+    border: 1px solid #2d3148;
+    border-radius: 8px;
+    padding: 1.5rem;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .modal-box h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #f8fafc;
+  }
+
+  .modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+</style>
 {% endblock %}
 
 {% block extra_script %}
 <script>
   function claimDetection(detectionId) {
     alert(`Detection #${detectionId} claimed.`);
-    const panel = document.getElementById(`control-panel-${detectionId}`);
-    if (panel) {
-      panel.style.display = 'flex';
-    }
     const button = document.getElementById(`claim-btn-${detectionId}`);
     if (button) {
       button.disabled = true;
     }
+    openControlPanel(detectionId);
+  }
+
+  // opens the pop-up and tags it with which detection it's for, so the action
+  // buttons know which detection # to mention in their alert
+  function openControlPanel(detectionId) {
+    const modal = document.getElementById('control-panel-modal');
+    if (!modal) return; // not rendered for non-analysts
+    modal.dataset.detectionId = detectionId;
+    document.getElementById('control-panel-detection-id').textContent = detectionId;
+    modal.style.display = 'flex';
+  }
+
+  function closeControlPanel() {
+    document.getElementById('control-panel-modal').style.display = 'none';
   }
 
   // this is just a demo/placeholder — no real action is performed, it only pops an alert
-  function triggerAction(actionName, detectionId) {
+  function triggerAction(actionName) {
+    const detectionId = document.getElementById('control-panel-modal').dataset.detectionId;
     alert(`${actionName} action was triggered for detection #${detectionId}. Other actions were not taken.`);
   }
 </script>
