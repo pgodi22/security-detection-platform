@@ -29,9 +29,17 @@
         <td><span class="status-badge status-{{ detection.status.value }}">{{ detection.status.value }}</span></td>
         <td>
           {% if can_claim %}
-          <button class="btn btn-sm" onclick="claimDetection({{ detection.id }})">Claim</button>
+          <button class="btn btn-sm" id="claim-btn-{{ detection.id }}" onclick="claimDetection({{ detection.id }})">Claim</button>
           {% else %}
           <span class="muted">—</span>
+          {% endif %}
+          {# control panel: only analysts get this, and it stays hidden until they claim the detection #}
+          {% if is_analyst %}
+          <div class="control-panel" id="control-panel-{{ detection.id }}" style="display: none; gap: 0.4rem; margin-top: 0.4rem;">
+            <button class="btn btn-sm btn-ghost" onclick="triggerAction('Isolate Endpoint', {{ detection.id }})">Isolate Endpoint</button>
+            <button class="btn btn-sm btn-ghost" onclick="triggerAction('Reset Password', {{ detection.id }})">Reset Password</button>
+            <button class="btn btn-sm btn-ghost" onclick="triggerAction('Block IP', {{ detection.id }})">Block IP</button>
+          </div>
           {% endif %}
         </td>
       </tr>
@@ -43,4 +51,25 @@
     </tbody>
   </table>
 </div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+  function claimDetection(detectionId) {
+    alert(`Detection #${detectionId} claimed.`);
+    const panel = document.getElementById(`control-panel-${detectionId}`);
+    if (panel) {
+      panel.style.display = 'flex';
+    }
+    const button = document.getElementById(`claim-btn-${detectionId}`);
+    if (button) {
+      button.disabled = true;
+    }
+  }
+
+  // this is just a demo/placeholder — no real action is performed, it only pops an alert
+  function triggerAction(actionName, detectionId) {
+    alert(`${actionName} action was triggered for detection #${detectionId}. Other actions were not taken.`);
+  }
+</script>
 {% endblock %}

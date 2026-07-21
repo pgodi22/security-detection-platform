@@ -30,6 +30,9 @@ def detection_queue(
     )
     # only analysts and admins get to see the claim button
     can_claim = current_user.role in (UserRole.analyst, UserRole.admin)
+    # the control panel (isolate/reset/block actions) is analyst-only —
+    # admins and readonly users never see it, even though admins can still claim
+    is_analyst = current_user.role == UserRole.analyst
     return templates.TemplateResponse(
         request,
         "queue.html",
@@ -37,6 +40,7 @@ def detection_queue(
             "detections": detections,
             "current_user": current_user,
             "can_claim": can_claim,
+            "is_analyst": is_analyst,
         },
     )
 

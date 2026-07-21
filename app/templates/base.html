@@ -317,20 +317,7 @@
       }
     }
 
-    async function claimDetection(id) {
-      const resp = await fetch(`/detections/queue/claim/${id}`, { method: 'POST' });
-      if (resp.status === 409) {
-        const data = await resp.json().catch(() => ({}));
-        alert(data.detail || 'Detection already claimed by another analyst');
-        window.location.reload();
-        return;
-      }
-      if (!resp.ok) {
-        alert('Failed to claim detection.');
-        return;
-      }
-      window.location.href = '/detections/queue';
-    }
+    // note: claimDetection() lives in queue.html, not here — it's the only page that needs it
 
     async function closeDetection(id) {
       if (!id) return;
